@@ -18,9 +18,9 @@ echo "📁 Chuẩn bị thư mục ứng dụng tại $INSTALL_DIR..."
 sudo mkdir -p $INSTALL_DIR
 sudo chown -R $USER:$USER $INSTALL_DIR
 
-# Copy toàn bộ file hiện tại vào $INSTALL_DIR (nếu chạy script từ thư mục source)
+# Copy toàn bộ file hiện tại vào $INSTALL_DIR (kể cả file ẩn)
 if [ "$(pwd)" != "$INSTALL_DIR" ]; then
-    cp -r ./* $INSTALL_DIR/
+    cp -a ./. $INSTALL_DIR/
 fi
 
 cd $INSTALL_DIR
@@ -35,7 +35,11 @@ pip install -r requirements.txt
 # 4. Kiểm tra file .env
 if [ ! -f "$INSTALL_DIR/.env" ]; then
     echo "⚠️ Chưa tìm thấy file .env, tạo file mẫu từ .env.example..."
-    cp .env.example .env
+    if [ -f "$INSTALL_DIR/.env.example" ]; then
+        cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
+    else
+        touch "$INSTALL_DIR/.env"
+    fi
     echo "👉 Vui lòng mở file .env và điền GEMINI_API_KEY hoặc OPENAI_API_KEY!"
 fi
 
