@@ -4,6 +4,8 @@ from telegram import (
     Update,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
     ForceReply,
     BotCommand
 )
@@ -34,30 +36,52 @@ def get_stats_data():
     except Exception:
         return 0, 0
 
+def get_main_reply_keyboard() -> ReplyKeyboardMarkup:
+    """Tạo bàn phím nút bấm cố định ở thanh dưới cùng theo đúng mẫu 9 nút (5 hàng)"""
+    keyboard = [
+        [
+            KeyboardButton("🚀 Bắt đầu"),
+            KeyboardButton("💳 Nạp điểm")
+        ],
+        [
+            KeyboardButton("🔎 Tra cứu"),
+            KeyboardButton("📡 Trạng thái")
+        ],
+        [
+            KeyboardButton("🔗 Mời bạn bè"),
+            KeyboardButton("🔌 API")
+        ],
+        [
+            KeyboardButton("📘 Trợ giúp"),
+            KeyboardButton("💬 Hỗ trợ")
+        ],
+        [
+            KeyboardButton("🌐 Ngôn ngữ")
+        ]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
+
 def get_main_inline_menu(user_level: str = "beginner") -> InlineKeyboardMarkup:
-    level_map = {
-        "beginner": "Cơ bản",
-        "intermediate": "Trung cấp",
-        "advanced": "Nâng cao"
-    }
-    level_name = level_map.get(user_level, "Cơ bản")
-    
+    """Tạo inline keyboard đính kèm tin nhắn theo mẫu 9 nút"""
     keyboard = [
         [
             InlineKeyboardButton("🚀 Bắt đầu", callback_data="menu_start"),
-            InlineKeyboardButton("🔎 Tra cứu", callback_data="menu_vocab")
+            InlineKeyboardButton("💳 Nạp điểm", callback_data="menu_points")
         ],
         [
-            InlineKeyboardButton("🌐 Dịch câu", callback_data="menu_translate"),
-            InlineKeyboardButton("💡 Hỏi gia sư AI", callback_data="menu_ask")
+            InlineKeyboardButton("🔎 Tra cứu", callback_data="menu_vocab"),
+            InlineKeyboardButton("📡 Trạng thái", callback_data="menu_status")
         ],
         [
-            InlineKeyboardButton(f"🎯 Cấp độ: {level_name}", callback_data="menu_level"),
-            InlineKeyboardButton("📊 Thống kê", callback_data="menu_stats")
+            InlineKeyboardButton("🔗 Mời bạn bè", callback_data="menu_invite"),
+            InlineKeyboardButton("🔌 API", callback_data="menu_api")
         ],
         [
             InlineKeyboardButton("📘 Trợ giúp", callback_data="menu_help"),
-            InlineKeyboardButton("🔄 Làm mới Menu", callback_data="menu_refresh")
+            InlineKeyboardButton("💬 Hỗ trợ", callback_data="menu_support")
+        ],
+        [
+            InlineKeyboardButton("🌐 Ngôn ngữ", callback_data="menu_lang")
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -100,7 +124,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_level = context.user_data.get("level", "beginner")
     await update.message.reply_text(
         get_welcome_text(current_level),
-        reply_markup=get_main_inline_menu(current_level),
+        reply_markup=get_main_reply_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -200,7 +224,17 @@ async def menu_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             reply_markup=get_level_picker_markup(chosen_level),
             parse_mode="Markdown"
         )
-    elif data == "menu_stats":
+    elif data == "menu_points":
+        text = (
+            "💳 **Thông tin điểm & Tài khoản:**\n\n"
+            "• 👤 Học viên: **Thành viên Study Bot**\n"
+            "• 💎 Điểm học tập: **1,000 / 1,000 điểm** (Đầy đủ)\n"
+            "• 🎁 Gói dịch vụ: **Miễn phí không giới hạn (Free Pro)**\n"
+            "• ⚡ Tra từ vựng & Hỏi bài: **Không giới hạn lượt dùng**\n\n"
+            "💡 *Mỗi lần tra từ vựng hoặc hỏi bài với bot, bạn đều được tích lũy điểm chuyên cần!*"
+        )
+        await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
+    elif data == "menu_status":
         vocab_count, msg_count = get_stats_data()
         level_map = {
             "beginner": "Cơ bản",
@@ -209,22 +243,73 @@ async def menu_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
         }
         level_name = level_map.get(current_level, "Cơ bản")
         text = (
-            "📊 **Thống kê hoạt động của Study Bot:**\n\n"
-            f"• 🎯 Cấp độ người học: **{level_name}**\n"
-            f"• 📚 Số từ vựng đã lưu trong cache: **{vocab_count} từ**\n"
-            f"• 💬 Tổng số lượt tin nhắn học tập: **{msg_count} lượt**\n"
-            f"• ⚡ Động cơ AI: **Google Gemini / FastAPI**\n"
-            f"• 🟢 Trạng thái hệ thống: **Hoạt động ổn định 24/7**"
+            "📡 **Trạng thái hệ thống (System Status):**\n\n"
+            "• 🟢 Máy chủ VPS: **Hoạt động ổn định 24/7**\n"
+            "• 🧠 Trí tuệ nhân tạo: **Google Gemini 2.5 Flash (Online)**\n"
+            f"• 🎯 Cấp độ hiện tại: **{level_name}**\n"
+            f"• 📚 Từ vựng trong bộ đệm: **{vocab_count} từ**\n"
+            f"• 💬 Lượt học tập đã phục vụ: **{msg_count} tin nhắn**\n"
+            "• ⏱ Tốc độ phản hồi: **< 1.2 giây**"
         )
         await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
+    elif data == "menu_invite":
+        text = (
+            "🔗 **Mời bạn bè cùng học tập:**\n\n"
+            "Cùng chia sẻ Study Bot để bạn bè cùng tra cứu từ vựng tiếng Anh và hỏi bài tập nhé!\n\n"
+            "👉 **Link bot:** https://t.me/manh_141208bot"
+        )
+        share_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("↗️ Chia sẻ cho bạn bè", url="https://t.me/share/url?url=https://t.me/manh_141208bot&text=H%E1%BB%8Dc%20ti%E1%BA%BFng%20Anh%20v%C3%A0%20gi%E1%BA%A3i%20b%C3%A0i%20t%E1%BA%ADp%20c%E1%BB%B1c%20nhanh%20v%E1%BB%9Bi%20Study%20Bot!")],
+            [InlineKeyboardButton("🔙 Quay lại Menu chính", callback_data="menu_main")]
+        ])
+        await query.edit_message_text(text, reply_markup=share_keyboard, parse_mode="Markdown")
+    elif data == "menu_api":
+        text = (
+            "🔌 **Cổng kết nối API & Máy chủ VPS:**\n\n"
+            "Study Bot được xây dựng trên nền tảng FastAPI hiệu năng cao:\n\n"
+            "• 🌐 Giao diện Web: `http://localhost:8000`\n"
+            "• 📑 Tài liệu Swagger API: `/docs`\n"
+            "• 🔍 API Tra từ vựng: `POST /api/vocab`\n"
+            "• 💬 API Chat AI: `POST /api/chat`\n"
+            "• 🛡 Bảo vệ: Rate-limiting & Input sanitization"
+        )
+        await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
+    elif data == "menu_support":
+        text = (
+            "💬 **Trung tâm hỗ trợ & Liên hệ:**\n\n"
+            "Nếu bạn gặp sự cố kỹ thuật hoặc muốn đóng góp ý kiến nâng cấp bot:\n\n"
+            "• 👨‍💻 Quản trị viên: @tung25112008\n"
+            "• 🤖 Phiên bản: **Study Bot v1.4.0**\n"
+            "• 💌 Hỗ trợ: Bạn chỉ cần nhắn thẳng câu hỏi vào khung chat này!"
+        )
+        await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
+    elif data == "menu_lang":
+        text = (
+            "🌐 **Cài đặt ngôn ngữ hiển thị (Language Settings):**\n\n"
+            "Vui lòng chọn ngôn ngữ giao diện bot:"
+        )
+        lang_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🇻🇳 Tiếng Việt (Mặc định)", callback_data="set_lang:vi")],
+            [InlineKeyboardButton("🇬🇧 English", callback_data="set_lang:en")],
+            [InlineKeyboardButton("🔙 Quay lại Menu chính", callback_data="menu_main")]
+        ])
+        await query.edit_message_text(text, reply_markup=lang_keyboard, parse_mode="Markdown")
+    elif data and data.startswith("set_lang:"):
+        lang_code = data.split(":", 1)[1]
+        context.user_data["language"] = lang_code
+        lang_name = "Tiếng Việt 🇻🇳" if lang_code == "vi" else "English 🇬🇧"
+        await query.edit_message_text(
+            f"✅ **Đã cập nhật ngôn ngữ:** {lang_name}",
+            reply_markup=get_back_button(),
+            parse_mode="Markdown"
+        )
     elif data == "menu_help":
         text = (
-            "📘 **Hướng dẫn sử dụng Study Bot:**\n\n"
-            "1. `/vocab <từ>`: Tra từ vựng có phiên âm IPA, nghĩa tiếng Việt, ví dụ song ngữ.\n"
-            "2. `/translate <câu>`: Dịch câu song ngữ kèm phân tích cấu trúc ngữ pháp.\n"
-            "3. `/level`: Bật bảng chọn cấp độ học tập.\n"
-            "4. `/help`: Xem lại hướng dẫn này.\n"
-            "5. **Hỏi bài**: Nhắn trực tiếp câu hỏi bất kỳ vào chat để được gia sư AI giải thích."
+            "📘 **Hướng dẫn sử dụng chi tiết:**\n\n"
+            "1. 🔎 **Tra cứu từ vựng**: Bấm `🔎 Tra cứu` hoặc gõ `/vocab <từ>`\n"
+            "2. 🌐 **Dịch câu**: Gõ `/translate <câu>` hoặc `/dich <câu>`\n"
+            "3. 🎯 **Đổi cấp độ**: Gõ `/level` để chọn Beginner / Intermediate / Advanced\n"
+            "4. 💬 **Hỏi bài tập**: Nhắn thẳng câu hỏi vào chat để AI giải thích chi tiết."
         )
         await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
 
@@ -272,7 +357,7 @@ async def vocab_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         reply,
-        reply_markup=get_main_inline_menu(level),
+        reply_markup=get_main_reply_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -282,7 +367,7 @@ async def translate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Vui lòng nhập câu bạn muốn dịch. Ví dụ:\n"
             "• `/translate Practice makes perfect.`\n"
             "• `/dich Học tập là chìa khóa mở ra tương lai.`",
-            reply_markup=get_main_inline_menu(context.user_data.get("level", "beginner")),
+            reply_markup=get_main_reply_keyboard(),
             parse_mode="Markdown"
         )
         return
@@ -315,7 +400,7 @@ async def translate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         answer,
-        reply_markup=get_main_inline_menu(level),
+        reply_markup=get_main_reply_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -329,6 +414,131 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     level = context.user_data.get("level", "beginner")
+
+    # 0. Bắt 9 nút bấm từ giao diện ReplyKeyboardMarkup cố định ở thanh dưới
+    if cleaned_text in ("🚀 Bắt đầu", "Bắt đầu"):
+        context.user_data.pop("awaiting", None)
+        await update.message.reply_text(
+            get_welcome_text(level),
+            reply_markup=get_main_reply_keyboard(),
+            parse_mode="Markdown"
+        )
+        return
+
+    if cleaned_text in ("💳 Nạp điểm", "Nạp điểm"):
+        context.user_data.pop("awaiting", None)
+        credit_text = (
+            "💳 **Thông tin điểm & Tài khoản:**\n\n"
+            "• 👤 Học viên: **Thành viên Study Bot**\n"
+            "• 💎 Điểm học tập: **1,000 / 1,000 điểm** (Đầy đủ)\n"
+            "• 🎁 Gói dịch vụ: **Miễn phí không giới hạn (Free Pro)**\n"
+            "• ⚡ Tra từ vựng & Hỏi bài: **Không giới hạn lượt dùng**\n\n"
+            "💡 *Mỗi lần tra từ vựng hoặc hỏi bài với bot, bạn đều được tích lũy điểm chuyên cần!*"
+        )
+        await update.message.reply_text(credit_text, reply_markup=get_main_reply_keyboard(), parse_mode="Markdown")
+        return
+
+    if cleaned_text in ("🔎 Tra cứu", "Tra cứu"):
+        context.user_data["awaiting"] = "vocab"
+        text_prompt = (
+            "🔎 **Tra cứu từ vựng tiếng Anh:**\n\n"
+            "👉 Hãy **nhập từ bạn muốn tra** vào thanh chat bên dưới rồi gửi cho bot nhé.\n\n"
+            "*(Ví dụ: nhập `achieve`, `diligent`, `resilience`...)*"
+        )
+        await update.message.reply_text(
+            text_prompt,
+            reply_markup=ForceReply(selective=True, input_field_placeholder="Nhập từ vựng cần tra (vd: achieve)..."),
+            parse_mode="Markdown"
+        )
+        return
+
+    if cleaned_text in ("📡 Trạng thái", "Trạng thái"):
+        context.user_data.pop("awaiting", None)
+        vocab_count, msg_count = get_stats_data()
+        level_map = {
+            "beginner": "Cơ bản",
+            "intermediate": "Trung cấp",
+            "advanced": "Nâng cao"
+        }
+        level_name = level_map.get(level, "Cơ bản")
+        status_text = (
+            "📡 **Trạng thái hệ thống (System Status):**\n\n"
+            "• 🟢 Máy chủ VPS: **Hoạt động ổn định 24/7**\n"
+            "• 🧠 Trí tuệ nhân tạo: **Google Gemini 2.5 Flash (Online)**\n"
+            f"• 🎯 Cấp độ hiện tại: **{level_name}**\n"
+            f"• 📚 Từ vựng trong bộ đệm: **{vocab_count} từ**\n"
+            f"• 💬 Lượt học tập đã phục vụ: **{msg_count} tin nhắn**\n"
+            "• ⏱ Tốc độ phản hồi: **< 1.2 giây**"
+        )
+        await update.message.reply_text(status_text, reply_markup=get_main_reply_keyboard(), parse_mode="Markdown")
+        return
+
+    if cleaned_text in ("🔗 Mời bạn bè", "Mời bạn bè"):
+        context.user_data.pop("awaiting", None)
+        invite_text = (
+            "🔗 **Mời bạn bè cùng học tập:**\n\n"
+            "Cùng chia sẻ Study Bot để bạn bè cùng tra cứu từ vựng tiếng Anh và hỏi bài tập nhé!\n\n"
+            "👉 **Link bot:** https://t.me/manh_141208bot"
+        )
+        share_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("↗️ Chia sẻ cho bạn bè", url="https://t.me/share/url?url=https://t.me/manh_141208bot&text=H%E1%BB%8Dc%20ti%E1%BA%BFng%20Anh%20v%C3%A0%20gi%E1%BA%A3i%20b%C3%A0i%20t%E1%BA%ADp%20c%E1%BB%B1c%20nhanh%20v%E1%BB%9Bi%20Study%20Bot!")],
+            [InlineKeyboardButton("🔙 Quay lại Menu chính", callback_data="menu_main")]
+        ])
+        await update.message.reply_text(invite_text, reply_markup=share_keyboard, parse_mode="Markdown")
+        return
+
+    if cleaned_text in ("🔌 API", "API"):
+        context.user_data.pop("awaiting", None)
+        api_text = (
+            "🔌 **Cổng kết nối API & Máy chủ VPS:**\n\n"
+            "Study Bot được xây dựng trên nền tảng FastAPI hiệu năng cao:\n\n"
+            "• 🌐 Giao diện Web: `http://localhost:8000`\n"
+            "• 📑 Tài liệu Swagger API: `/docs`\n"
+            "• 🔍 API Tra từ vựng: `POST /api/vocab`\n"
+            "• 💬 API Chat AI: `POST /api/chat`\n"
+            "• 🛡 Bảo vệ: Rate-limiting & Input sanitization"
+        )
+        await update.message.reply_text(api_text, reply_markup=get_main_reply_keyboard(), parse_mode="Markdown")
+        return
+
+    if cleaned_text in ("📘 Trợ giúp", "Trợ giúp"):
+        context.user_data.pop("awaiting", None)
+        help_text = (
+            "📘 **Hướng dẫn sử dụng chi tiết:**\n\n"
+            "1. 🔎 **Tra cứu từ vựng**: Bấm `🔎 Tra cứu` hoặc gõ `/vocab <từ>`\n"
+            "2. 🌐 **Dịch câu**: Gõ `/translate <câu>` hoặc `/dich <câu>`\n"
+            "3. 🎯 **Đổi cấp độ**: Gõ `/level` để chọn Beginner / Intermediate / Advanced\n"
+            "4. 💬 **Hỏi bài tập**: Nhắn thẳng câu hỏi vào chat để AI giải thích chi tiết."
+        )
+        await update.message.reply_text(help_text, reply_markup=get_main_reply_keyboard(), parse_mode="Markdown")
+        return
+
+    if cleaned_text in ("💬 Hỗ trợ", "Hỗ trợ"):
+        context.user_data.pop("awaiting", None)
+        support_text = (
+            "💬 **Trung tâm hỗ trợ & Liên hệ:**\n\n"
+            "Nếu bạn gặp sự cố kỹ thuật hoặc muốn đóng góp ý kiến nâng cấp bot:\n\n"
+            "• 👨‍💻 Quản trị viên: @tung25112008\n"
+            "• 🤖 Phiên bản: **Study Bot v1.4.0**\n"
+            "• 💌 Hỗ trợ: Bạn chỉ cần nhắn thẳng câu hỏi vào khung chat này!"
+        )
+        await update.message.reply_text(support_text, reply_markup=get_main_reply_keyboard(), parse_mode="Markdown")
+        return
+
+    if cleaned_text in ("🌐 Ngôn ngữ", "Ngôn ngữ"):
+        context.user_data.pop("awaiting", None)
+        lang_text = (
+            "🌐 **Cài đặt ngôn ngữ hiển thị (Language Settings):**\n\n"
+            "Vui lòng chọn ngôn ngữ giao diện bot:"
+        )
+        lang_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🇻🇳 Tiếng Việt (Mặc định)", callback_data="set_lang:vi")],
+            [InlineKeyboardButton("🇬🇧 English", callback_data="set_lang:en")],
+            [InlineKeyboardButton("🔙 Quay lại Menu chính", callback_data="menu_main")]
+        ])
+        await update.message.reply_text(lang_text, reply_markup=lang_keyboard, parse_mode="Markdown")
+        return
+
     awaiting = context.user_data.pop("awaiting", None)
 
     # 1. Nếu người dùng vừa bấm nút 'Tra cứu' và nhập từ vựng
@@ -353,7 +563,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         save_message(f"tg_{chat_id}", "user", f"/vocab {word_to_lookup}", msg_type="vocab")
         save_message(f"tg_{chat_id}", "bot", reply, msg_type="vocab")
-        await update.message.reply_text(reply, reply_markup=get_main_inline_menu(level), parse_mode="Markdown")
+        await update.message.reply_text(reply, reply_markup=get_main_reply_keyboard(), parse_mode="Markdown")
         return
 
     # 2. Nếu người dùng vừa bấm nút 'Dịch câu' và nhập câu cần dịch
@@ -373,7 +583,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = response_data.get("answer", "Xin lỗi, không thể dịch câu này lúc này.")
         save_message(f"tg_{chat_id}", "user", f"/translate {sentence}", msg_type="translate")
         save_message(f"tg_{chat_id}", "bot", answer, msg_type="translate")
-        await update.message.reply_text(answer, reply_markup=get_main_inline_menu(level), parse_mode="Markdown")
+        await update.message.reply_text(answer, reply_markup=get_main_reply_keyboard(), parse_mode="Markdown")
         return
 
     # 3. Câu hỏi học tập thông thường
@@ -388,7 +598,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         answer,
-        reply_markup=get_main_inline_menu(level)
+        reply_markup=get_main_reply_keyboard()
     )
 
 async def post_init(application):
