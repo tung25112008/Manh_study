@@ -15,9 +15,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👋 Chào mừng bạn đến với **Study Bot - Trợ lý học tập**!\n\n"
         "📚 Các chức năng chính:\n"
         "• Gửi bất kỳ câu hỏi học tập nào để được giải thích chi tiết từng bước.\n"
-        "• Dùng lệnh `/vocab <từ>` để tra cứu từ vựng (nghĩa, IPA, ví dụ, từ đồng nghĩa).\n"
+        "• Dùng lệnh `/vocab <từ>` để tra cứu từ vựng (IPA, từ loại, nghĩa tiếng Việt, ví dụ song ngữ).\n"
+        "• Dùng lệnh `/translate <câu>` (hoặc `/dich <câu>`) để dịch nguyên câu kèm phân tích ngữ pháp.\n"
         "• Dùng lệnh `/level <beginner|intermediate|advanced>` để đổi cấp độ giải thích.\n"
-        "• Dùng lệnh `/help` để xem hướng dẫn.\n"
+        "• Dùng lệnh `/help` để xem lại hướng dẫn.\n"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
@@ -75,6 +76,44 @@ async def vocab_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply, parse_mode="Markdown")
 
 
+async def translate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "Vui lòng nhập câu bạn muốn dịch. Ví dụ:\n"
+            "• `/translate Practice makes perfect.`\n"
+            "• `/dich Học tập là chìa khóa mở ra tương lai.`",
+            parse_mode="Markdown"
+        )
+        return
+        
+    raw_sentence = " ".join(context.args)
+    is_safe, sentence, err_msg = validate_and_sanitize_input(raw_sentence)
+    if not is_safe:
+        await update.message.reply_text(f"⚠️ {err_msg}")
+        return
+
+    chat_id = str(update.effective_chat.id)
+    level = context.user_data.get("level", "beginner")
+    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+
+    translate_prompt = (
+        f"Hãy dịch câu sau một cách tự nhiên và chính xác nhất (nếu câu là tiếng Anh thì dịch sang tiếng Việt, nếu là tiếng Việt thì dịch sang tiếng Anh):\n"
+        f"\"{sentence}\"\n\n"
+        f"Hãy trình bày câu trả lời rõ ràng theo cấu trúc sau:\n"
+        f"🌐 **Bản dịch:**\n<nội dung bản dịch>\n\n"
+        f"📝 **Cấu trúc ngữ pháp:**\n<phân tích thì, thành phần hoặc cấu trúc ngữ pháp dùng trong câu>\n\n"
+        f"💡 **Từ vựng & Cụm từ hay:**\n<liệt kê các từ vựng hoặc collocations/idioms trong câu kèm nghĩa>"
+    )
+    
+    messages = [{"role": "user", "content": translate_prompt}]
+    response_data = generate_chat_response(messages, level=level)
+    answer = response_data.get("answer", "Xin lỗi, không thể dịch câu này lúc này.")
+
+    save_message(f"tg_{chat_id}", "user", f"/translate {sentence}", msg_type="translate")
+    save_message(f"tg_{chat_id}", "bot", answer, msg_type="translate")
+
+    await update.message.reply_text(answer, parse_mode="Markdown")
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     chat_id = str(update.effective_chat.id)
@@ -112,6 +151,8 @@ def run_telegram_bot():
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", start_command))
     app.add_handler(CommandHandler("vocab", vocab_command))
+    app.add_handler(CommandHandler("translate", translate_command))
+    app.add_handler(CommandHandler("dich", translate_command))
     app.add_handler(CommandHandler("level", level_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
