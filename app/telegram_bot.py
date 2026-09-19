@@ -4,6 +4,7 @@ from telegram import (
     Update,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
+    ForceReply,
     BotCommand
 )
 from telegram.ext import (
@@ -140,42 +141,40 @@ async def menu_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             parse_mode="Markdown"
         )
     elif data == "menu_vocab":
+        context.user_data["awaiting"] = "vocab"
         text = (
             "🔎 **Tra cứu từ vựng tiếng Anh:**\n\n"
-            "Bot hỗ trợ phân tích từ vựng có đầy đủ:\n"
-            "• Phiên âm quốc tế IPA\n"
-            "• Từ loại (Danh từ, Động từ, Tính từ...)\n"
-            "• Dịch nghĩa tiếng Việt chuẩn xác\n"
-            "• Ví dụ song ngữ minh họa\n"
-            "• Từ đồng nghĩa & Trái nghĩa\n\n"
-            "👉 **Cách dùng:** Gõ lệnh `/vocab <từ vựng>`\n"
-            "Ví dụ:\n"
-            "• `/vocab achieve`\n"
-            "• `/vocab diligent`\n"
-            "• `/vocab resilience`"
+            "👉 Hãy **nhập từ bạn muốn tra** vào thanh chat bên dưới rồi gửi cho bot.\n\n"
+            "*(Hoặc bấm vào lệnh /vocab rồi nhập từ, ví dụ: `/vocab achieve`)*"
         )
-        await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
+        await query.message.reply_text(
+            text,
+            reply_markup=ForceReply(selective=True, input_field_placeholder="Nhập từ vựng cần tra (vd: achieve)..."),
+            parse_mode="Markdown"
+        )
     elif data == "menu_translate":
+        context.user_data["awaiting"] = "translate"
         text = (
             "🌐 **Dịch nguyên câu tiếng Anh ↔ Tiếng Việt:**\n\n"
-            "Bot dịch câu tự nhiên, kèm bóc tách cấu trúc ngữ pháp và từ vựng hay trong câu.\n\n"
-            "👉 **Cách dùng:** Gõ lệnh `/translate <câu>` hoặc `/dich <câu>`\n"
-            "Ví dụ:\n"
-            "• `/translate Practice makes perfect.`\n"
-            "• `/dich Học tập là chìa khóa mở ra tương lai.`\n\n"
-            "💡 *Mẹo: Bạn cũng có thể nhắn thẳng câu cần dịch vào khung chat!*"
+            "👉 Hãy **nhập câu bạn muốn dịch** vào thanh chat bên dưới rồi gửi cho bot.\n\n"
+            "*(Hoặc bấm vào lệnh /translate rồi nhập câu)*"
         )
-        await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
+        await query.message.reply_text(
+            text,
+            reply_markup=ForceReply(selective=True, input_field_placeholder="Nhập câu bạn muốn dịch..."),
+            parse_mode="Markdown"
+        )
     elif data == "menu_ask":
+        context.user_data["awaiting"] = "ask"
         text = (
             "💡 **Hỏi gia sư học tập AI:**\n\n"
-            "Bạn có thể hỏi mọi câu hỏi học tập thuộc các môn:\n"
-            "• Ngữ pháp & viết luận tiếng Anh\n"
-            "• Toán học, Vật lý, Hóa học\n"
-            "• Lập trình & Khoa học máy tính\n\n"
-            "👉 **Cách dùng:** Chỉ cần gõ trực tiếp câu hỏi của bạn gửi vào khung chat, AI sẽ trả lời chi tiết từng bước!"
+            "👉 Hãy **nhập câu hỏi học tập** của bạn vào thanh chat bên dưới rồi gửi cho bot:"
         )
-        await query.edit_message_text(text, reply_markup=get_back_button(), parse_mode="Markdown")
+        await query.message.reply_text(
+            text,
+            reply_markup=ForceReply(selective=True, input_field_placeholder="Nhập câu hỏi học tập của bạn..."),
+            parse_mode="Markdown"
+        )
     elif data == "menu_level":
         msg = (
             "🎯 **Chọn cấp độ học tập phù hợp:**\n\n"
@@ -330,10 +329,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     level = context.user_data.get("level", "beginner")
-    
-    # Báo đang gõ
+    awaiting = context.user_data.pop("awaiting", None)
+
+    # 1. Nếu người dùng vừa bấm nút 'Tra cứu' và nhập từ vựng
+    if awaiting == "vocab":
+        word_to_lookup = cleaned_text.removeprefix("/vocab").strip() if cleaned_text.startswith("/vocab") else cleaned_text
+        await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+        res = lookup_vocabulary(word_to_lookup, language="vi", level=level)
+        
+        meanings_str = "\n".join([f"• {m}" for m in res.get("meanings", [])]) or "Đang cập nhật"
+        examples_str = "\n".join([f"• {e}" for e in res.get("examples", [])]) or "Đang cập nhật"
+        synonyms_str = ", ".join(res.get("synonyms", [])) or "Không có"
+        antonyms_str = ", ".join(res.get("antonyms", [])) or "Không có"
+        
+        reply = (
+            f"📖 **Từ vựng:** `{res.get('word')}`\n"
+            f"🏷 **Từ loại:** {res.get('part_of_speech')}\n"
+            f"🗣 **Phiên âm:** `{res.get('phonetic')}`\n\n"
+            f"💡 **Ý nghĩa tiếng Việt:**\n{meanings_str}\n\n"
+            f"📝 **Ví dụ minh họa:**\n{examples_str}\n\n"
+            f"🔄 **Đồng nghĩa:** {synonyms_str}\n"
+            f"⚡ **Trái nghĩa:** {antonyms_str}"
+        )
+        save_message(f"tg_{chat_id}", "user", f"/vocab {word_to_lookup}", msg_type="vocab")
+        save_message(f"tg_{chat_id}", "bot", reply, msg_type="vocab")
+        await update.message.reply_text(reply, reply_markup=get_main_inline_menu(level), parse_mode="Markdown")
+        return
+
+    # 2. Nếu người dùng vừa bấm nút 'Dịch câu' và nhập câu cần dịch
+    if awaiting == "translate":
+        sentence = cleaned_text.removeprefix("/translate").removeprefix("/dich").strip() if (cleaned_text.startswith("/translate") or cleaned_text.startswith("/dich")) else cleaned_text
+        await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+        translate_prompt = (
+            f"Hãy dịch câu sau một cách tự nhiên và chính xác nhất (nếu câu là tiếng Anh thì dịch sang tiếng Việt, nếu là tiếng Việt thì dịch sang tiếng Anh):\n"
+            f"\"{sentence}\"\n\n"
+            f"Hãy trình bày câu trả lời rõ ràng theo cấu trúc sau:\n"
+            f"🌐 **Bản dịch:**\n<nội dung bản dịch>\n\n"
+            f"📝 **Cấu trúc ngữ pháp:**\n<phân tích thì, thành phần hoặc cấu trúc ngữ pháp dùng trong câu>\n\n"
+            f"💡 **Từ vựng & Cụm từ hay:**\n<liệt kê các từ vựng hoặc collocations/idioms trong câu kèm nghĩa>"
+        )
+        messages = [{"role": "user", "content": translate_prompt}]
+        response_data = generate_chat_response(messages, level=level)
+        answer = response_data.get("answer", "Xin lỗi, không thể dịch câu này lúc này.")
+        save_message(f"tg_{chat_id}", "user", f"/translate {sentence}", msg_type="translate")
+        save_message(f"tg_{chat_id}", "bot", answer, msg_type="translate")
+        await update.message.reply_text(answer, reply_markup=get_main_inline_menu(level), parse_mode="Markdown")
+        return
+
+    # 3. Câu hỏi học tập thông thường
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
-    
     messages = [{"role": "user", "content": cleaned_text}]
     response_data = generate_chat_response(messages, level=level)
     answer = response_data.get("answer", "Xin lỗi, không nhận được phản hồi.")
