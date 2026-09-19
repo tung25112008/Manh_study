@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Bot - Trợ Lý Học Tập & Tra Cứu Từ Vựng Thông Minh</title>
+  <meta name="description" content="Trợ lý học tập thông minh hỗ trợ giải đáp kiến thức, tra cứu từ vựng đa cấp độ với AI.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Markdown & KaTeX Math CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  
+  <!-- Highlight.js for Code -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar: Danh sách phiên trò chuyện -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">🎓</span>
+          <span class="logo-text">Study Bot</span>
+        </div>
+        <button id="new-chat-btn" class="btn btn-primary" title="Tạo cuộc hội thoại mới">
+          <span>+ Cuộc trò chuyện mới</span>
+        </button>
+      </div>
+
+      <div class="conversation-section">
+        <div class="section-title">Lịch sử học tập</div>
+        <div class="conversation-list" id="conversation-list">
+          <!-- Render dynamically -->
+          <div class="empty-state">Chưa có phiên học nào</div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="status-dot online"></span>
+          <span class="status-label" id="system-status">Hệ thống sẵn sàng</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Control Bar -->
+      <header class="topbar">
+        <button id="sidebar-toggle" class="icon-btn mobile-only" title="Mở menu">☰</button>
+        
+        <div class="tab-controls">
+          <button class="tab-btn active" data-tab="chat">💬 Giải đáp học tập</button>
+          <button class="tab-btn" data-tab="vocab">📖 Tra cứu từ vựng</button>
+        </div>
+
+        <div class="settings-controls">
+          <label for="level-select" class="level-label">Trình độ:</label>
+          <select id="level-select" class="select-box">
+            <option value="beginner">🌱 Cơ bản (Dễ hiểu)</option>
+            <option value="intermediate">🌿 Trung cấp (Chi tiết)</option>
+            <option value="advanced">🌳 Nâng cao (Chuyên sâu)</option>
+          </select>
+        </div>
+      </header>
+
+      <!-- Chat View -->
+      <section class="view-panel active" id="chat-panel">
+        <div class="chat-container" id="chat-container">
+          <!-- Welcome Hero -->
+          <div class="welcome-hero" id="welcome-hero">
+            <div class="hero-icon">✨</div>
+            <h2>Chào bạn! Bạn muốn học môn gì hôm nay?</h2>
+            <p>Tôi có thể giúp bạn giải thích bài tập, phương pháp giải Toán, phân tích ngữ pháp, hoặc hiểu sâu các khái niệm khoa học.</p>
+            
+            <div class="quick-prompts">
+              <button class="prompt-chip" data-prompt="Giải thích thì Hiện tại hoàn thành (Present Perfect) và cho 3 ví dụ dễ hiểu.">
+                🇬🇧 Thì Hiện tại hoàn thành
+              </button>
+              <button class="prompt-chip" data-prompt="Giải thích định luật vạn vật hấp dẫn của Newton bằng ví dụ đời sống.">
+                🍎 Định luật vạn vật hấp dẫn
+              </button>
+              <button class="prompt-chip" data-prompt="Cách giải phương trình bậc hai dạng ax^2 + bx + c = 0 bằng công thức nghiệm delta.">
+                📐 Công thức nghiệm phương trình bậc 2
+              </button>
+              <button class="prompt-chip" data-prompt="Phân biệt sự khác nhau giữa quang hợp và hô hấp ở thực vật.">
+                🌿 Quang hợp vs Hô hấp
+              </button>
+            </div>
+          </div>
+
+          <!-- Messages stream -->
+          <div class="messages-list" id="messages-list"></div>
+        </div>
+
+        <!-- Chat Input Area -->
+        <div class="chat-input-wrapper">
+          <form id="chat-form" class="input-form">
+            <textarea 
+              id="message-input" 
+              placeholder="Đặt câu hỏi học tập (Shift + Enter để xuống dòng, Enter để gửi)..." 
+              rows="1"
+              required
+            ></textarea>
+            <button type="submit" id="send-btn" class="send-button" title="Gửi câu hỏi">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+          <div class="input-footer">Study Bot khuyến khích bạn hiểu cách làm, tránh chép bài rập khuôn.</div>
+        </div>
+      </section>
+
+      <!-- Vocabulary Lookup View -->
+      <section class="view-panel" id="vocab-panel">
+        <div class="vocab-container">
+          <div class="vocab-search-card">
+            <h2>Tra cứu từ vựng & cụm từ</h2>
+            <p>Tra cứu nghĩa, phiên âm quốc tế IPA, từ loại, ví dụ thực tiễn và từ đồng nghĩa/trái nghĩa.</p>
+            
+            <form id="vocab-form" class="vocab-input-group">
+              <input type="text" id="vocab-input" placeholder="Nhập từ hoặc cụm từ (vd: achieve, take into account, resilience...)" required autocomplete="off">
+              <button type="submit" class="btn btn-primary">Tra cứu</button>
+            </form>
+          </div>
+
+          <!-- Kết quả tra từ vựng -->
+          <div id="vocab-result-wrapper" class="vocab-result-card hidden">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

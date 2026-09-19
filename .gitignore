@@ -1,0 +1,32 @@
+# Môi trường ảo (Virtual Environment)
+venv/
+env/
+.venv/
+ENV/
+
+# Cấu hình chứa API Key & Token bí mật (QUAN TRỌNG: Không bao giờ đẩy lên Git)
+.env
+.env.local
+.env.*.local
+
+# Cơ sở dữ liệu SQLite
+*.db
+*.sqlite
+*.sqlite3
+study_bot.db
+
+# Cache & Bytecode của Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Nhật ký & Log
+*.log
+logs/
+
+# IDE / Trình soạn thảo
+.vscode/
+.idea/
+*.swp
+*.swo

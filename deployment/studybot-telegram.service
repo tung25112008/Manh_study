@@ -1,0 +1,19 @@
+[Unit]
+Description=Study Bot - Telegram Bot Assistant Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/study-bot
+EnvironmentFile=/var/www/study-bot/.env
+ExecStart=/var/www/study-bot/venv/bin/python -m app.telegram_bot
+Restart=always
+RestartSec=5
+
+# Giới hạn tài nguyên bảo vệ VPS 1GB RAM
+MemoryMax=300M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

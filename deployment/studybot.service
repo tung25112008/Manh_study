@@ -1,0 +1,19 @@
+[Unit]
+Description=Study Bot - Python FastAPI Educational Assistant Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/study-bot
+EnvironmentFile=/var/www/study-bot/.env
+ExecStart=/var/www/study-bot/venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=always
+RestartSec=5
+
+# Giới hạn tài nguyên bảo vệ VPS 1GB RAM không bị OOM
+MemoryMax=600M
+CPUQuota=90%
+
+[Install]
+WantedBy=multi-user.target
